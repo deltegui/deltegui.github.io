@@ -57,10 +57,14 @@ const i18n = {
 
 let lang;
 
+function timeNow() {
+    return new Date();
+}
+
 function loadDataFromURL() {
     const queryString = window.location.search;
     const urlParams = new URLSearchParams(queryString);
-    const now = new Date();
+    const now = timeNow();
 
     const parseIntFromURL = (key, fn, transform = p => p) => {
         const parsed = Number.parseInt(urlParams.get(key));
@@ -69,12 +73,22 @@ function loadDataFromURL() {
 
     const year =  parseIntFromURL('year', 'getFullYear');
     const month = parseIntFromURL('month', 'getMonth', x => x - 1);
-    const days = parseIntFromURL('day', 'getDate');
-    const hours = parseIntFromURL('hour', 'getHours');
+    const day = parseIntFromURL('day', 'getDate');
+    const hour = parseIntFromURL('hour', 'getHours');
+
+    console.log(
+        'Parsed info from URL: YEAR: ',
+        year,
+        ' MONTH: ',
+        month,
+        ' DAY: ',
+        day,
+        ' HOUR: ',
+        hour);
 
     lang = urlParams.get('lang') === 'en' ? i18n.en : i18n.es;
 
-    return new Date(year, month, days, hours);
+    return new Date(year, month, day, hour);
 }
 
 function present({ days, hours, minutes, seconds }, htmlElement) {
@@ -102,7 +116,7 @@ function present({ days, hours, minutes, seconds }, htmlElement) {
 }
 
 function timeBetweenDates(toDate) {
-    const now = new Date();
+    const now = timeNow();
     const difference = toDate - now;
 
     const toMilliseconds = ({ days, hours, minutes, seconds }) => {
@@ -181,8 +195,8 @@ window.onload = () => {
     const id = setInterval(() => {
         remaining.minusOne();
         if (remaining.abort) {
-            clearInterval(id);
             element.innerHTML = lang.end;
+            clearInterval(id);
             return;
         }
         present(remaining, element);
