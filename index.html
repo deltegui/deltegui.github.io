@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Timeout</title>
+<style>
+@font-face {
+    font-family: timeout;
+    src: url(font.ttf);
+}
+body {
+    background-color: #131313;
+    color: #FFF2F9;
+    font-family: timeout;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0px;
+    padding: 0px;
+}
+
+.container {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    text-align: center;
+    align-items: center;
+    justify-content: center;
+}
+</style>
+</head>
+<body>
+    <div class="container">
+        <h1 id="countdown">hola hola</h1>
+    </div>
+
+<script type="application/javascript">
+const i18n = {
+    es: {
+        days: 'días',
+        hours: 'horas',
+        minutes: 'minutos',
+        seconds: 'segundos',
+        end: '¡Llegó la hora!',
+    },
+    en: {
+        days: 'days',
+        hours: 'hours',
+        minutes: 'minutes',
+        seconds: 'seconds',
+        end: 'The time has come!',
+    },
+}
+
+let lang;
+
+function loadDataFromURL() {
+    const queryString = window.location.search;
+    const urlParams = new URLSearchParams(queryString);
+    const now = new Date();
+
+    const parseIntFromURL = (key, fn, transform = p => p) => {
+        const parsed = Number.parseInt(urlParams.get(key));
+        return (parsed) ? transform(parsed) : now[fn]();
+    };
+
+    const year =  parseIntFromURL('year', 'getFullYear');
+    const month = parseIntFromURL('month', 'getMonth', x => x - 1);
+    const days = parseIntFromURL('day', 'getDate');
+    const hours = parseIntFromURL('hour', 'getHours');
+
+    lang = urlParams.get('lang') === 'en' ? i18n.en : i18n.es;
+
+    return new Date(year, month, days, hours);
+}
+
+function present({ days, hours, minutes, seconds }, htmlElement) {
+    const strs = [];
+
+    const formatStr = (e, key) => {
+        const eStr = e.toLocaleString('en-US', {
+            minimumIntegerDigits: 2,
+            useGrouping:false
+        });
+        return `${eStr} ${lang[key]}`;
+    }
+
+    if (days > 0) strs.push(formatStr(days, 'days'))
+
+    const psh = (e, key) => {
+        if (strs.length > 0 || e > 0) strs.push(formatStr(e, key));
+    }
+
+    psh(hours, 'hours');
+    psh(minutes, 'minutes');
+    psh(seconds, 'seconds');
+
+    htmlElement.innerHTML = strs.join(' ');
+}
+
+function timeBetweenDates(toDate) {
+    const now = new Date();
+    const difference = toDate - now;
+
+    const toMilliseconds = ({ days, hours, minutes, seconds }) => {
+        const D = 24*60*60*1000;
+        const H = 60*60*1000;
+        const M = 60*1000;
+        const S = 1000;
+        return days * D + hours * H + minutes * M + seconds * S;
+    }
+
+    const minusOne = function() {
+        const milliseconds = toMilliseconds(this);
+        this.setValues(calculate(milliseconds-1000));
+    }
+
+    const setValues = function({ abort, days, hours, minutes, seconds }) {
+        this.abort = abort;
+        this.days = days;
+        this.hours = hours;
+        this.minutes = minutes;
+        this.seconds = seconds;
+    }
+
+    const createInstance = base => ({
+        setValues,
+        minusOne,
+        ...base,
+    });
+
+    const calculate = milliseconds => {
+        let seconds = Math.floor(milliseconds / 1000);
+        let minutes = Math.floor(seconds / 60);
+        let hours = Math.floor(minutes / 60);
+        let days = Math.floor(hours / 24);
+
+        hours %= 24;
+        minutes %= 60;
+        seconds %= 60;
+
+        return createInstance({
+            abort: false,
+            days,
+            hours,
+            minutes,
+            seconds,
+        });
+    }
+
+    if (difference <= 0) {
+        return createInstance({
+            minusOne,
+            setValues,
+            abort: true,
+            days: 0,
+            hours: 0,
+            minutes: 0,
+            seconds: 0,
+        });
+    }
+
+    return calculate(difference);
+}
+
+window.onload = () => {
+    const expirationDate = loadDataFromURL();
+    console.log(expirationDate);
+    const element = document.getElementById('countdown');
+
+    const remaining = timeBetweenDates(expirationDate);
+    if (remaining.abort) {
+        element.innerHTML = lang.end;
+        return;
+    }
+    present(remaining, element);
+
+    const id = setInterval(() => {
+        remaining.minusOne();
+        if (remaining.abort) {
+            clearInterval(id);
+            element.innerHTML = lang.end;
+            return;
+        }
+        present(remaining, element);
+    }, 1000);
+};
+</script>
+</body>
+</html>
